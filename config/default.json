@@ -18,7 +18,7 @@
     "max_disk_mb": 250,
     "max_llm_calls": 20,
     "max_llm_tokens": 20000,
-    "max_runtime_seconds": 600,
+    "max_runtime_seconds": 0,
     "max_stream_duration_seconds": 3600
   },
   "capabilities": {
@@ -64,12 +64,13 @@
     "resolve_config",
     "load_inputs",
     "start_run_store",
-    "observe_simulation_state",
-    "call_llm_agent",
-    "evaluate_workflow_state",
-    "route_by_context",
-    "request_human_input",
-    "apply_decision_to_simulation",
+    "start_continuous_service",
+    "dispatch_cross_box_scientific_jobs",
+    "generate_candidates",
+    "fold_targets_in_parallel",
+    "screen_with_drugclip",
+    "run_parallel_simulations",
+    "aggregate_cycle_results",
     "emit_events",
     "write_final_artifact",
     "fan_out_output_skills",
@@ -115,6 +116,13 @@
     "adapter": "mock",
     "description": "Default synthetic inputs bundled with the blueprint.",
     "payload": {
+      "disease_or_target_profile": "Alzheimer disease BACE1 modulation",
+      "targets": [
+        {
+          "protein_id": "P56817",
+          "gene": "BACE1"
+        }
+      ],
       "input_folder": "drug_discovery_research_assistant/examples/sample_inputs",
       "output_folder": "~/Download/drug_discovery_research_assistant"
     }
@@ -226,6 +234,13 @@
       "standard_version",
       "identity",
       "mode",
+      "service",
+      "execution",
+      "cluster_distribution",
+      "candidate_generator",
+      "folding",
+      "drugclip",
+      "simulation",
       "metadata",
       "inputs",
       "simulation",
@@ -320,6 +335,13 @@
       "standard_version",
       "identity",
       "mode",
+      "service",
+      "execution",
+      "cluster_distribution",
+      "candidate_generator",
+      "folding",
+      "drugclip",
+      "simulation",
       "metadata",
       "inputs",
       "simulation",
@@ -352,7 +374,7 @@
   },
   "llm": {
     "enabled": true,
-    "agent_role": "AI assistant for organizing drug discovery candidate generation, filtering, and evidence review.",
+    "agent_role": "AI service coordinator for distributed candidate generation, DrugCLIP virtual screening, folding, simulation, and evidence review.",
     "agents": {
       "binding_evaluation": {
         "llm_config": "primary",
@@ -648,21 +670,140 @@
     "blueprint_id": "drug_discovery_research_assistant",
     "blueprint_revision": "v1",
     "category": "science",
-    "customizable_for": "Drug discovery, material search, assay planning, scientific literature review, and research pipeline support.",
-    "description": "A research co-worker for early drug-discovery triage. Give it a disease or target profile, screening criteria, optional candidate seeds, literature notes, and an input folder for supporting files; it stages an evidence-backed discovery workflow and writes review-ready candidate summaries, scores, assumptions, risks, and source notes to the output folder.",
-    "llm_agent_role": "AI assistant for organizing drug discovery candidate generation, filtering, and evidence review.",
+    "customizable_for": "Drug discovery, target-focused virtual screening, molecular-generation pipelines, folding, simulation, and scientific research operations.",
+    "description": "A continuous drug-discovery research service. Give it a disease or target profile, screening criteria, optional candidate seeds, literature notes, and an input folder; it continuously generates candidate hypotheses, screens them with DrugCLIP, folds targets, runs configured simulations across cluster workers, and writes review-only cycle reports until manually stopped.",
+    "llm_agent_role": "AI service coordinator for distributed candidate generation, DrugCLIP virtual screening, folding, simulation, and evidence review.",
     "name": "Drug Discovery Research Assistant",
-    "problem_solved": "Discovery work is iterative and evidence-heavy; researchers need an assistant that keeps candidate generation, scoring, extraction, and review moving in order.",
-    "simulation_type": "Iterative scientific research workflow with staged candidate review.",
+    "problem_solved": "Discovery work needs continuous, traceable candidate generation and scientific screening without collapsing cluster-scale folding and simulation into a single serial worker.",
+    "simulation_type": "Continuous distributed computational discovery service with DrugCLIP virtual screening.",
     "standard_version": "1.0",
     "target_user": "Computational biology researchers, scientific AI platform teams, and research operations groups.",
     "target_users": "Computational biology researchers, scientific AI platform teams, and research operations groups."
   },
   "mode": "mock",
+  "service": {
+    "enabled": true,
+    "run_until": "manual_stop",
+    "stop_file": "${MN_RUN_DIR}/STOP",
+    "cycle_interval_seconds": 15,
+    "max_cycles": null,
+    "simulation_top_k": 16,
+    "parallelism": {
+      "folding_workers": 2,
+      "drugclip_workers": 4,
+      "simulation_workers": 4
+    },
+    "shutdown_grace_seconds": 30,
+    "status_artifact": "service_state.json"
+  },
+  "execution": {
+    "fake_science_adapters": false,
+    "native_worker_required": true,
+    "mode": "cluster_dispatch"
+  },
+  "cluster_distribution": {
+    "enabled": true,
+    "dispatch_command": [],
+    "dispatch_timeout_seconds": 1800,
+    "fallback": "fail_closed",
+    "contract": "The configured native dispatcher receives a JSON job specification on stdin and returns JSON with either result or a written output_path.",
+    "worker_pools": {
+      "control": "science-control",
+      "generation": "science-generation",
+      "folding": "science-folding",
+      "drugclip": "science-drugclip",
+      "simulation": "science-simulation",
+      "aggregation": "science-control"
+    },
+    "collaboration": {
+      "mode": "cross_box_fanout_fanin",
+      "shared_artifact_contract": "cycle request/result JSON files in the run store",
+      "idempotency_key": "run_id:cycle_id:adapter:target_or_candidate"
+    }
+  },
+  "candidate_generator": {
+    "required": true,
+    "command": [
+      "/usr/bin/python3.11",
+      "scripts/biotarget_adapter.py",
+      "--adapter",
+      "candidate_generator",
+      "--input",
+      "{input_path}",
+      "--output",
+      "{output_path}"
+    ],
+    "timeout_seconds": 1800,
+    "contract": "Run BioTarget Stage C using the DrugClip graph-text model. Read JSON request from {input_path}; write JSON containing candidates to {output_path}."
+  },
+  "folding": {
+    "required": true,
+    "command": [
+      "/usr/bin/python3.11",
+      "scripts/biotarget_adapter.py",
+      "--adapter",
+      "folding",
+      "--input",
+      "{input_path}",
+      "--output",
+      "{output_path}"
+    ],
+    "timeout_seconds": 3600,
+    "contract": "Run BioTarget Stage B. Read a target request from {input_path}; write a structure result with a local path to {output_path}."
+  },
+  "drugclip": {
+    "required": true,
+    "mode": "text_molecular_graph_alignment",
+    "model_ref": "hf.co/homerquan/DrugClip",
+    "runtime_model_key": "drugclip",
+    "checkpoint_repo": "homerquan/DrugClip",
+    "checkpoint_filename": "best.ckpt",
+    "source_repository": "/Users/homer/Sandbox/BioTarget",
+    "command": [
+      "/usr/bin/python3.11",
+      "scripts/biotarget_adapter.py",
+      "--adapter",
+      "drugclip",
+      "--input",
+      "{input_path}",
+      "--output",
+      "{output_path}"
+    ],
+    "timeout_seconds": 1800,
+    "contract": "Use BioTarget's DrugClip graph-text alignment path. Read a molecular candidate and therapeutic intent from {input_path}; write drugclip_score to {output_path}."
+  },
+  "simulation": {
+    "required": true,
+    "command": [
+      "/usr/bin/python3.11",
+      "scripts/biotarget_adapter.py",
+      "--adapter",
+      "simulation",
+      "--input",
+      "{input_path}",
+      "--output",
+      "{output_path}"
+    ],
+    "timeout_seconds": 3600,
+    "contract": "Run BioTarget Stage D evaluation for a DrugClip-selected candidate. Read JSON from {input_path}; write docking and toxicity metrics to {output_path}."
+  },
+  "biotarget": {
+    "enabled": true,
+    "source_dir": "/Users/homer/Sandbox/BioTarget",
+    "native_python_required": true,
+    "stages": {
+      "target_discovery": "biotarget.stages.stage_a_discovery",
+      "folding": "biotarget.stages.stage_b_structure",
+      "candidate_generation": "biotarget.stages.stage_c_generative",
+      "evaluation": "biotarget.stages.stage_d_evaluation"
+    },
+    "simulation_engine": "gnina",
+    "simulation_runtime_note": "BioTarget Stage D currently invokes GNINA through its own containerized runner; the continuous control plane and adapter processes remain native HostLocal workers."
+  },
   "output_skills": {},
   "outputs": {
     "adapter": "local_run_store",
-    "artifact_contract": "Candidate artifacts, stage logs, evidence notes, and discovery summaries for researcher review.",
+    "artifact_contract": "Continuous-cycle candidate, folding, DrugCLIP, simulation, state, and review-only scientific evidence artifacts.",
     "run_root": "~/.mn/runs",
     "skills": {},
     "tcp": {
@@ -710,7 +851,7 @@
     }
   },
   "resources": {
-    "enabled": true,
+    "enabled": false,
     "gpu_enabled": "auto",
     "gpu_sample_interval_seconds": 60,
     "history_window_hours": 24,
@@ -736,7 +877,7 @@
     "deterministic": true,
     "enabled": true,
     "seed_field": "seed",
-    "type": "Iterative scientific research workflow with staged candidate review."
+    "type": "Configured parallel molecular simulation after DrugCLIP screening."
   },
   "standard_version": "1.0",
   "state": {
@@ -757,7 +898,7 @@
   "triggers": {
     "schedule": null,
     "sources": [],
-    "type": "manual"
+    "type": "manual_service"
   },
   "web_ui": {
     "dashboard": {
