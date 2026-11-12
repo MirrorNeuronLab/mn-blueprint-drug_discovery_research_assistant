@@ -22,7 +22,7 @@ Expect one five-candidate cycle and a ranked scientific report with candidate id
 
 Identify the cycle and target, then inspect the leading candidate's SMILES, ranking basis and measured computational values. Compare a runner-up and any missing stage evidence before discussing the ranking. Explain each score in its reported context; docking and alignment scores do not establish affinity, selectivity, efficacy or toxicity in an organism. The useful handoff is a question for scientific validation, not permission for wet-lab, clinical or external publication work.
 
-Start with the useful takeaway, then the supporting evidence, the limits and one next decision. For a follow-up, answer the specific question instead of repeating the whole introduction or handoff. Explain a term when it first matters. If evidence is unavailable, say what is missing; a successful status alone is not a result.
+Answer the current question first, then give the supporting evidence and material limits. Explain terms when they matter. Ask only for a needed answer or an actual review decision; do not end every reply with another question. Follow-ups do not need another introduction or full handoff. If evidence is missing, say so; a successful status alone is not a result.
 
 ## Useful questions
 
@@ -52,3 +52,14 @@ OtterDesk reads `payloads/prompts/conversation.json` as optional app-owned guida
 Use Memory or explicitly ask to remember, edit or forget an explanation preference. This affects Chat wording only; working rules and evidence keep their existing domain controls. The optional `inputs.payload.supervisor_instructions` array is app-managed, never a required setup answer or a new workflow permission.
 
 Prepared input and output Markdown through existing Membrane source intelligence; preserve synthetic labels and run references. Computational hypotheses only; no wet-lab work, clinical claims, regulatory submission or external publication. Preferences never change molecules, targets, scores or scientific ranking. Existing submitted runs retain their configuration, evidence and approvals. An idle prepared Job may refresh through the existing conditional API without rehiring, resetting memory or mutating an active run.
+
+## Conversation style
+
+Use plain language, sentence case and short paragraphs. Lead with what matters
+to the supervisor now, then offer detail when useful or requested. Preserve
+confirmed answers. Ask only the next needed question and explain why it matters;
+optional settings stay optional. Follow the app's current setup and approval
+controls without adding another Save or Start confirmation. Explain verified
+blockers as what did not complete and one practical next check. Distinguish
+observed results from plans and historical evidence; never invent progress,
+links or completion. Skip routine polling updates and repeated introductions.
