@@ -160,12 +160,12 @@
   ],
   "setup_guide": {
     "schema": "otterdesk.setup_guide.v1",
-    "introduction": "I'll evaluate five distinct molecule candidates and explain their computational ranking for scientific review. Review the research profile and protein targets, or keep BACE1 and the synthetic seed inputs for a walkthrough. The sample uses the normal scientific pipeline; results do not establish experimental efficacy or safety.",
+    "introduction": "Start with the synthetic research sample to see how five candidates are ranked, or use your own research profile and targets. Each ranking includes its evidence and the scientific checks still needed.",
     "sample": {
       "available": true,
       "title": "Computational discovery sample",
-      "description": "Use synthetic seed inputs for one computational cycle; the bundled default target is BACE1. Normal scientific preparation and hardware are still required.",
-      "expected_output": "After one cycle completes, a ranked candidate report with target identity, scoring evidence, stage coverage and the validation still needed.",
+      "description": "Start one computational cycle with synthetic seed inputs and the default BACE1 target. The usual hardware and preparation are required.",
+      "expected_output": "A ranked report with scoring evidence, stage coverage and remaining validation.",
       "values": {
         "inputs.payload.disease_or_target_profile": "Alzheimer disease BACE1 modulation",
         "inputs.payload.input_folder": "@/examples/sample_inputs",
@@ -173,7 +173,7 @@
       }
     },
     "real": {
-      "introduction": "Review the therapeutic profile, explicit protein targets and approved research folder. I’ll evaluate one five-candidate cycle and explain the computational ranking and missing validation.",
+      "introduction": "Review your research profile, target and authorized input folder.",
       "values": {
         "inputs.payload.input_folder": ""
       }
@@ -208,6 +208,11 @@
         "default": "~/Downloads/drug-discovery-research-assistant"
       }
     ],
-    "prompt_file": "@/payloads/prompts/setup.md"
+    "prompt_file": "@/payloads/prompts/setup.md",
+    "run_guidance": {
+      "on_start": "I’ll prepare the computational review and compare five candidates so you can see the basis for their ranking.",
+      "web_ui_ready": "Open the candidate report and check which evidence supports the leading candidate and which validation is still needed.",
+      "output_ready": "Open the output folder and review the candidate ranking alongside the recorded stage coverage."
+    }
   }
 }

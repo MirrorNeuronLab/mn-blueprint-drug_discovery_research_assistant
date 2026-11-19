@@ -288,11 +288,11 @@ def discovery_dashboard_state(
     else:
         overall = "Waiting to start"
 
-    mode = str(cycle_progress.get("mode") or config.get("mode") or "live").lower()
+    mode = str(final_artifact.get("mode") or cycle_progress.get("mode") or config.get("mode") or "unknown").lower()
     mode_label = (
         "Synthetic smoke test"
         if mode in {"fake", "mock", "fake_smoke_test"}
-        else "Live"
+        else "Live" if mode == "live" else "Mode unrecorded"
     )
     metrics: dict[str, Any] = {
         "Overall status": overall,
@@ -375,6 +375,7 @@ def discovery_dashboard_state(
         )
     return {
         "metrics": metrics,
+        "ranked_record_count": len(_items(final_artifact.get("ranked_candidates"))) if final_artifact else None,
         "molecule": _molecule_state(molecule_preview),
         "warning": warning,
         "events": public_events[-50:],
@@ -482,6 +483,16 @@ def render_static_dashboard(state: Mapping[str, Any]) -> str:
     )
     warning = html.escape(str(state.get("warning") or ""))
     candidate_id = html.escape(str(molecule.get("candidate_id") or "Awaiting ranking"))
+    ranked_count = state.get("ranked_record_count")
+    if ranked_count is None:
+        evidence_note = "A final ranking has not been recorded. Check the last update under Progress."
+    else:
+        evidence_note = (f"The saved review contains {int(ranked_count)} candidate records. "
+                         "Compare the displayed results with ranked_candidates in final_artifact.json. ")
+        if metrics.get("Mode") == "Synthetic smoke test":
+            evidence_note += "These records exercise the workflow using synthetic data."
+        else:
+            evidence_note += "The review contains computational evidence only."
     smiles = html.escape(str(molecule.get("smiles") or "—"))
     candidate_cards = "".join(
         '<article class="card">' + (
@@ -498,7 +509,7 @@ def render_static_dashboard(state: Mapping[str, Any]) -> str:
         identity=str(metrics.get("Overall status") or "Review packet ready"),
         content_html=f"""
 <p class="qualification">{warning}</p>
-<section id="overview"><h2>Leading candidate</h2><div class="discovery-overview">
+<section id="overview"><h2>Leading candidate</h2><p>{evidence_note}</p><div class="discovery-overview">
 <div class="card">{molecule_markup}<h3>{candidate_id}</h3><code>{smiles}</code></div>
 <div><h3>Computational scores</h3><div class="table-wrap"><table><tbody>{score_rows}</tbody></table></div>
 <p class="qualification">Higher simulation stability ranks first, followed by DrugCLIP score. These scores do not establish experimental efficacy or safety.</p></div></div></section>
